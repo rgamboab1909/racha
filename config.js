@@ -1,5 +1,1 @@
-// Conexión a Supabase. La anon key es pública por diseño: la seguridad la ponen las reglas RLS de schema.sql.
-window.RACHA_CONFIG = {
-  SUPABASE_URL: 'https://TU-PROYECTO.supabase.co',
-  SUPABASE_ANON_KEY: 'TU-ANON-KEY'
-};
+window.RACHA_CONFIG = { SUPABASE_URL: 'https://bpsfozsjsndemypeoyix.supabase.co', SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwc2ZvenNqc25kZW15cGVveWl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEwODAyNDEsImV4cCI6MjEwNjY1NjI0MX0.Dd9CeGQeC_YaSva6paPgbeh0LsDeJ6PD43Htt-0tNG0' };
