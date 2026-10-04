@@ -16,10 +16,11 @@
     { id: 'plata', e: '💰', n: 'Plata', d: 'Ahorro y gasto consciente', t: [['Registrar gastos', '💰', 'Diario'], ['Cero delivery', '🥗', 'Lun a vie']] },
     { id: 'gente', e: '🤝', n: 'Gente', d: 'Vínculos que se cuidan', t: [['Llamar a alguien', '📞', '2× por semana'], ['Cena sin celular', '📵', '3× por semana']] }
   ];
-  const FREQS = ['Diario', '5× por semana', '3× por semana'];
+  const FREQS = ['Diario', '5× por semana', '4× por semana', '3× por semana'];
   const TIERS = [['Semilla', 0, '🌱'], ['Constante', 300, '🌿'], ['Imparable', 1500, '🔥'], ['Leyenda', 5000, '👑']];
   const PERKS = [['☕', '2×1 en café de especialidad', 'Cafetería aliada (ejemplo)', 300], ['🧘', '20% en clases de pilates', 'Estudio aliado (ejemplo)', 300], ['⭐', '50% en Racha Pro', 'Beneficio de la app', 300], ['🏋️', '1 semana gratis de gimnasio', 'Gimnasio aliado (ejemplo)', 1500], ['👟', '15% en zapatillas de running', 'Tienda aliada (ejemplo)', 1500], ['🩺', 'Chequeo preventivo sin costo', 'Clínica aliada (ejemplo)', 5000]];
   const DAYL = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const MONTHSFULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
 
   // ---------- fechas (siempre hora local del celular) ----------
@@ -161,10 +162,35 @@
     }
     return s + '</div>';
   }
+  const targetOf = f => ({ 'Diario': 7, 'Lun a vie': 5 })[f] || parseInt(f, 10) || 7;
+  function weekCount(hid) { const ws = mondayOf(today()); let c = 0; for (let i = 0; i < 7; i++) if (S.logs.has(K(hid, addDays(ws, i)))) c++; return c; }
+  // semana actual de lunes a domingo, con letra y número de día; cada día se puede tocar
+  function weekStrip(h) {
+    const t = today(), ws = mondayOf(t);
+    let s = '<div class="week">';
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(ws, i), on = S.logs.has(K(h.id, d)), fut = d > t;
+      s += '<button class="wd' + (on ? ' on' : '') + (d === t ? ' t' : '') + '"' + (fut ? ' disabled' : ' data-act="cell" data-h="' + h.id + '" data-d="' + d + '"') + (on ? ' style="--c:' + h.color + '"' : '') + ' aria-label="' + prettyDate(d) + (on ? ', hecho' : '') + '"><span>' + (d === t ? 'Hoy' : DAYL[i]) + '</span><b>' + parse(d).getDate() + '</b></button>';
+    }
+    return s + '</div>';
+  }
+  // calendario mensual real: nombre del mes, días numerados, se navega con ‹ ›
+  function monthCal(h, ym) {
+    const [y, m] = ym.split('-').map(Number), t = today(), days = new Date(y, m, 0).getDate(), lead = (new Date(y, m - 1, 1, 12).getDay() + 6) % 7;
+    let done = 0, elig = 0;
+    let s = '<div class="cal"><div class="calhead"><button class="iconbtn" data-act="calnav" data-v="-1" aria-label="Mes anterior">‹</button><b>' + MONTHSFULL[m - 1] + ' ' + y + '</b><button class="iconbtn" data-act="calnav" data-v="1" aria-label="Mes siguiente"' + (ym >= t.slice(0, 7) ? ' disabled' : '') + '>›</button></div><div class="calgrid">' + DAYL.map(d => '<span class="dow">' + d + '</span>').join('');
+    for (let i = 0; i < lead; i++) s += '<span></span>';
+    for (let d = 1; d <= days; d++) {
+      const ds = ym + '-' + z(d), on = S.logs.has(K(h.id, ds)), fut = ds > t;
+      if (!fut) { elig++; if (on) done++; }
+      s += '<button class="cd' + (on ? ' on' : '') + (ds === t ? ' t' : '') + '"' + (fut ? ' disabled' : ' data-act="cell" data-h="' + h.id + '" data-d="' + ds + '"') + (on ? ' style="--c:' + h.color + '"' : '') + ' aria-label="' + prettyDate(ds) + (on ? ', hecho' : '') + '">' + d + '</button>';
+    }
+    return s + '</div><div class="calfoot"><span>' + done + ' de ' + elig + ' días cumplidos</span><span class="legend"><i style="background:' + h.color + '"></i>hecho <i class="lt"></i>hoy</span></div></div>';
+  }
   const committedIn = hid => S.commits.filter(c => c.habit_id === hid).map(c => S.parties.find(p => p.id === c.party_id)).filter(Boolean);
   function habitCard(h) {
     const on = S.logs.has(K(h.id, today())), st = streak(h.id), inP = committedIn(h.id).length;
-    return '<div class="hcard" data-act="open" data-id="' + h.id + '"><div class="hrow"><span class="hico" style="background:' + h.color + '33">' + esc(h.icon) + '</span><span class="hname"><b>' + esc(h.name) + '</b><small>' + (st ? '🔥 ' + st + (st === 1 ? ' día' : ' días') : 'Sin racha aún') + ' · ' + esc(h.freq) + (inP ? '<span class="badge">🏆 party</span>' : '') + '</small></span><button class="check' + (on ? ' done' : '') + '" data-act="tick" data-id="' + h.id + '" style="' + (on ? 'background:' + h.color : '') + '" aria-label="Marcar ' + esc(h.name) + '">✓</button></div>' + gridHtml(h, 20) + '</div>';
+    return '<div class="hcard" data-act="open" data-id="' + h.id + '"><div class="hrow"><span class="hico" style="background:' + h.color + '33">' + esc(h.icon) + '</span><span class="hname"><b>' + esc(h.name) + '</b><small>' + (st ? '🔥 ' + st + (st === 1 ? ' día' : ' días') : 'Sin racha aún') + ' · ' + esc(h.freq) + (inP ? '<span class="badge">🏆 party</span>' : '') + '</small></span><button class="check' + (on ? ' done' : '') + '" data-act="tick" data-id="' + h.id + '" style="' + (on ? 'background:' + h.color : '') + '" aria-label="Marcar ' + esc(h.name) + '">✓</button></div>' + weekStrip(h) + '<div class="hfoot"><span>Esta semana: <b>' + weekCount(h.id) + ' de ' + targetOf(h.freq) + '</b></span><span>Ver calendario ›</span></div></div>';
   }
   const av = (name, uid, size) => { const c = COLORS[Math.abs([...(uid || name)].reduce((a, ch) => a * 31 + ch.charCodeAt(0) | 0, 7)) % COLORS.length]; return '<span class="av' + (size ? ' ' + size : '') + '" style="background:' + c + '">' + esc((name || '?').slice(0, 2).toUpperCase()) + '</span>'; };
   function tabs() {
@@ -234,7 +260,7 @@
     for (let m = 5; m >= 0; m--) { const d = new Date(now.getFullYear(), now.getMonth() - m, 1, 12), key = d.getFullYear() + '-' + z(d.getMonth() + 1); bars.push([MONTHS[d.getMonth()], [...S.logs].filter(k => k.startsWith(x.id + '|' + key)).length, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()]); }
     const inP = committedIn(x.id);
     let h = '<button class="back" data-act="tab" data-to="home">← Hoy</button><div class="dhead"><span class="hico lg" style="background:' + x.color + '33">' + esc(x.icon) + '</span><div><h2 class="q" style="margin:0">' + esc(x.name) + '</h2><small class="muted">' + esc(x.freq) + (inP.length ? ' · en ' + inP.map(p => esc(p.name)).join(', ') : '') + '</small></div></div>';
-    h += '<p class="lbl">Últimos 6 meses · toca un día para marcarlo o desmarcarlo</p>' + gridHtml(x, 26, true);
+    h += '<p class="lbl">Toca un día para marcarlo o desmarcarlo</p>' + monthCal(x, S.p.month || t.slice(0, 7));
     h += '<div class="kpis"><div class="kpi"><b>🔥 ' + streak(x.id) + '</b><small>racha actual</small></div><div class="kpi"><b>' + bestStreak(x.id) + '</b><small>mejor racha</small></div><div class="kpi"><b>' + Math.round(c30 / 30 * 100) + '%</b><small>cumplimiento 30 días</small></div><div class="kpi"><b>' + tot + '</b><small>veces en total</small></div></div>';
     h += '<div class="bars">' + bars.map((b, i) => '<div style="height:' + Math.max(4, b[1] / b[2] * 100) + '%;background:' + x.color + (i === 5 ? '' : '99') + '"><span>' + b[0] + '</span></div>').join('') + '</div>';
     h += '<div class="row2"><button class="cta ghost" data-act="edithabit" data-id="' + x.id + '">Editar</button><button class="cta ghost danger" data-act="delhabit" data-id="' + x.id + '">' + (S.p.confirmDel ? '¿Seguro? Toca otra vez' : 'Eliminar') + '</button></div>';
@@ -414,6 +440,7 @@
     open(el) { go('detail', { id: el.dataset.id }); },
     tick(el, ev) { ev.stopPropagation(); toggleLog(el.dataset.id, today()); },
     cell(el, ev) { ev.stopPropagation(); toggleLog(el.dataset.h, el.dataset.d); },
+    calnav(el) { const cur = S.p.month || today().slice(0, 7); const [y, m] = cur.split('-').map(Number); const d = new Date(y, m - 1 + +el.dataset.v, 1, 12); const nm = d.getFullYear() + '-' + z(d.getMonth() + 1); if (nm > today().slice(0, 7)) return; S.p.month = nm; render(); },
     cat(el) { S.p.cat = el.dataset.id; render(); const t = $('#tpls'); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); },
     tpl(el) { const c = CATS.find(x => x.id === S.p.cat), i = +el.dataset.i, t = i >= 0 ? c.t[i] : ['', '✍️', 'Diario']; go('newcfg', { draft: { name: t[0], icon: t[1], freq: FREQS.includes(t[2]) ? t[2] : 'Diario', color: COLORS[S.habits.length % COLORS.length], category: c.id } }); },
     dic(el) { S.p.draft.icon = el.dataset.v; keepName(); render(); },
